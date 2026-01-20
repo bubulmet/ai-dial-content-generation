@@ -36,22 +36,49 @@ class Quality:
     hd: str = "hd"
 
 async def _save_images(attachments: list[Attachment]):
-    # TODO:
-    #  1. Create DIAL bucket client
-    #  2. Iterate through Images from attachments, download them and then save here
-    #  3. Print confirmation that image has been saved locally
-    raise NotImplementedError
+    async with DialBucketClient(
+            api_key=API_KEY,
+            base_url=DIAL_URL
+    ) as bucket_client:
+        for attachment in attachments:
+            if attachment.type and attachment.type == 'image/png':
+                image_data = await bucket_client.get_file(attachment.url)
+                filename = f"{datetime.now()}.png"
+
+                with open(filename, 'wb') as f:
+                    f.write(image_data)
+
+                print(f"Image saved: {filename}")
 
 
-def start() -> None:
-    # TODO:
-    #  1. Create DialModelClient
-    #  2. Generate image for "Sunny day on Bali"
-    #  3. Get attachments from response and save generated message (use method `_save_images`)
-    #  4. Try to configure the picture for output via `custom_fields` parameter.
-    #    - Documentation: See `custom_fields`. https://dialx.ai/dial_api#operation/sendChatCompletionRequest
-    #  5. Test it with the 'imagegeneration@005' (Google image generation model)
-    raise NotImplementedError
+def start(model_name='dall-e-3') -> None:
+    model_client = DialModelClient(
+        endpoint=DIAL_CHAT_COMPLETIONS_ENDPOINT,
+        api_key=API_KEY,
+        deployment_name=model_name,
+    )
+    message = Message(
+        role=Role.USER,
+        content="Sunny day on Bali",
+    )
+    if model_name == 'dall-e-3':
+        # supports custom_fields
+        reply = model_client.get_completion(
+            [message],
+            custom_fields={
+                "size": Size.width_rectangle,
+                "style": Style.vivid,
+                "quality": Quality.standard,
+            }
+        )
+    else:
+        reply = model_client.get_completion([message])
 
+    if custom_content := reply.custom_content:
+        if attachments := custom_content.attachments:
+            asyncio.run(_save_images(attachments))
 
-start()
+# start(
+#     model_name='dall-e-3'
+#     # model_name='imagegeneration@005'
+# )

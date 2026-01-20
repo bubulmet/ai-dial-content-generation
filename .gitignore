@@ -177,3 +177,5 @@ pyrightconfig.json
 
 .env
 yac.http
+2026*.png
+*.DS_Store
